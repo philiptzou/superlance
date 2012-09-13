@@ -25,8 +25,8 @@
 # events=TICK_60
 
 doc = """\
-httpok.py [-p processname] [-a] [-g] [-t timeout] [-c status_code] [-b inbody]
-          [-m mail_address] [-s sendmail] URL
+httpok.py [-p processname] [-a] [-g] [-t timeout] [-c status_codes]  [-C nstatus_codes] 
+          [-b inbody] [-m mail_address] [-s sendmail] URL
 
 Options:
 
@@ -55,11 +55,17 @@ Options:
       attempt to restart processes in the RUNNING state specified by
       -p or -a.  This defaults to 10 seconds.
 
--c -- specify an expected HTTP status code from a GET request to the
-      URL.  If this status code is not the status code provided by the
-      response, httpok will attempt to restart processes in the
-      RUNNING state specified by -p or -a.  This defaults to the
-      string, "200".
+-c -- specify a comma-separated list of expected HTTP status codes from a 
+      GET request to the URL.  If none of these status codes match the 
+      status code provided by the response, httpok will attempt to restart 
+      processes in the RUNNING state specified by -p or -a.  This defaults 
+      to the string, "200" and can't be used with -C.
+      
+-C -- specify a comma-separated list of unexpected HTTP status codes from a 
+      GET request to the URL.  If any of these status codes match the 
+      status code provided by the response, httpok will attempt to restart 
+      processes in the RUNNING state specified by -p or -a.  This can't be 
+      used with -c.
 
 -b -- specify a string which should be present in the body resulting
       from the GET request.  If this string is not present in the
@@ -113,7 +119,7 @@ def usage():
 
 class HTTPOk:
     connclass = None
-    def __init__(self, rpc, programs, any, url, timeout, status, inbody,
+    def __init__(self, rpc, programs, any, url, timeout, status, nstatus, inbody,
                  email, sendmail, coredir, gcore, eager, retry_time):
         self.rpc = rpc
         self.programs = programs
@@ -121,7 +127,8 @@ class HTTPOk:
         self.url = url
         self.timeout = timeout
         self.retry_time = retry_time
-        self.status = status
+        self.status = status and [str(s).strip() for s in status.split(',')] or []
+        self.nstatus = nstatus and [str(s).strip() for s in nstatus.split(',')] or []
         self.inbody = inbody
         self.email = email
         self.sendmail = sendmail
@@ -199,7 +206,8 @@ class HTTPOk:
                     status = None
                     msg = 'error contacting %s:\n\n %s' % (self.url, e)
 
-                if str(status) != str(self.status):
+                if (self.status and str(status) not in self.status) or \
+                    (self.nstatus and str(status) in self.nstatus):
                     subject = 'httpok for %s: bad status returned' % self.url
                     self.act(subject, msg)
                 elif self.inbody and self.inbody not in body:
@@ -299,13 +307,14 @@ class HTTPOk:
 
 def main(argv=sys.argv):
     import getopt
-    short_args="hp:at:c:b:s:m:g:d:eE"
+    short_args="hp:at:cC:b:s:m:g:d:eE"
     long_args=[
         "help",
         "program=",
         "any",
         "timeout=",
         "code=",
+        "not-code=",
         "body=",
         "sendmail_program=",
         "email=",
@@ -335,6 +344,7 @@ def main(argv=sys.argv):
     timeout = 10
     retry_time = 10
     status = '200'
+    nstatus = ''
     inbody = None
 
     for option, value in opts:
@@ -359,6 +369,10 @@ def main(argv=sys.argv):
 
         if option in ('-c', '--code'):
             status = value
+            
+        if option in ('-C', '--not-code'):
+            nstatus = value
+            status = ''
 
         if option in ('-b', '--body'):
             inbody = value
@@ -387,7 +401,7 @@ def main(argv=sys.argv):
         sys.stderr.flush()
         return
 
-    prog = HTTPOk(rpc, programs, any, url, timeout, status, inbody, email,
+    prog = HTTPOk(rpc, programs, any, url, timeout, status, nstatus, inbody, email,
                   sendmail, coredir, gcore, eager, retry_time)
     prog.runforever()
 
