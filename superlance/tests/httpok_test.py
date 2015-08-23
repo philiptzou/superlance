@@ -54,6 +54,7 @@ def make_connection(response, exc=None):
 
     return TestConnection
 
+
 class HTTPOkTests(unittest.TestCase):
     def _getTargetClass(self):
         from superlance.httpok import HTTPOk
@@ -73,10 +74,11 @@ class HTTPOkTests(unittest.TestCase):
         timeout = 10
         retry_time = 0
         status = '200'
+        nstatus = None
         inbody = None
         gcore = gcore
         coredir = coredir
-        prog = self._makeOne(rpc, programs, any, url, timeout, status,
+        prog = self._makeOne(rpc, programs, any, url, timeout, status, nstatus,
                              inbody, email, sendmail, coredir, gcore, eager,
                              retry_time)
         prog.stdin = StringIO()
