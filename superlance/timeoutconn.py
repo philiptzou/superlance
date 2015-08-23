@@ -2,6 +2,7 @@ from superlance.compat import httplib
 import socket
 import ssl
 
+
 class TimeoutHTTPConnection(httplib.HTTPConnection):
     """A customised HTTPConnection allowing a per-connection
     timeout, specified at construction."""
@@ -13,7 +14,7 @@ class TimeoutHTTPConnection(httplib.HTTPConnection):
 
         e = "getaddrinfo returns an empty list"
         for res in socket.getaddrinfo(self.host, self.port,
-                0, socket.SOCK_STREAM):
+                                      0, socket.SOCK_STREAM):
             af, socktype, proto, canonname, sa = res
             try:
                 self.sock = socket.socket(af, socktype, proto)
@@ -28,6 +29,7 @@ class TimeoutHTTPConnection(httplib.HTTPConnection):
             break
         if not self.sock:
             raise socket.error(e)
+
 
 class TimeoutHTTPSConnection(httplib.HTTPSConnection):
     timeout = None

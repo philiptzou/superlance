@@ -25,8 +25,8 @@
 # events=TICK_60
 
 doc = """\
-httpok.py [-p processname] [-a] [-g] [-t timeout] [-c status_codes]  [-C nstatus_codes] 
-          [-b inbody] [-m mail_address] [-s sendmail] URL
+httpok.py [-p processname] [-a] [-g] [-t timeout] [-c status_codes]
+          [-C nstatus_codes] [-b inbody] [-m mail_address] [-s sendmail] URL
 
 Options:
 
@@ -55,16 +55,16 @@ Options:
       attempt to restart processes in the RUNNING state specified by
       -p or -a.  This defaults to 10 seconds.
 
--c -- specify a comma-separated list of expected HTTP status codes from a 
-      GET request to the URL.  If none of these status codes match the 
-      status code provided by the response, httpok will attempt to restart 
-      processes in the RUNNING state specified by -p or -a.  This defaults 
+-c -- specify a comma-separated list of expected HTTP status codes from a
+      GET request to the URL.  If none of these status codes match the
+      status code provided by the response, httpok will attempt to restart
+      processes in the RUNNING state specified by -p or -a.  This defaults
       to the string, "200" and can't be used with -C.
-      
--C -- specify a comma-separated list of unexpected HTTP status codes from a 
-      GET request to the URL.  If any of these status codes match the 
-      status code provided by the response, httpok will attempt to restart 
-      processes in the RUNNING state specified by -p or -a.  This can't be 
+
+-C -- specify a comma-separated list of unexpected HTTP status codes from a
+      GET request to the URL.  If any of these status codes match the
+      status code provided by the response, httpok will attempt to restart
+      processes in the RUNNING state specified by -p or -a.  This can't be
       used with -c.
 
 -b -- specify a string which should be present in the body resulting
@@ -113,22 +113,27 @@ from supervisor.options import make_namespec
 
 from superlance import timeoutconn
 
+
 def usage():
     print(doc)
     sys.exit(255)
 
+
 class HTTPOk:
     connclass = None
-    def __init__(self, rpc, programs, any, url, timeout, status, nstatus, inbody,
-                 email, sendmail, coredir, gcore, eager, retry_time):
+
+    def __init__(self, rpc, programs, any, url, timeout, status, nstatus,
+                 inbody, email, sendmail, coredir, gcore, eager, retry_time):
         self.rpc = rpc
         self.programs = programs
         self.any = any
         self.url = url
         self.timeout = timeout
         self.retry_time = retry_time
-        self.status = status and [str(s).strip() for s in status.split(',')] or []
-        self.nstatus = nstatus and [str(s).strip() for s in nstatus.split(',')] or []
+        self.status = [str(s).strip()
+                       for s in status.split(',')] if status else []
+        self.nstatus = [str(s).strip()
+                        for s in nstatus.split(',')] if nstatus else []
         self.inbody = inbody
         self.email = email
         self.sendmail = sendmail
@@ -141,8 +146,8 @@ class HTTPOk:
 
     def listProcesses(self, state=None):
         return [x for x in self.rpc.supervisor.getAllProcessInfo()
-                   if x['name'] in self.programs and
-                      (state is None or x['state'] == state)]
+                if (x['name'] in self.programs and
+                    (state is None or x['state'] == state))]
 
     def runforever(self, test=False):
         parsed = urlparse.urlsplit(self.url)
@@ -166,7 +171,8 @@ class HTTPOk:
         while 1:
             # we explicitly use self.stdin, self.stdout, and self.stderr
             # instead of sys.* so we can unit test this code
-            headers, payload = childutils.listener.wait(self.stdin, self.stdout)
+            headers, payload = childutils.listener.wait(self.stdin,
+                                                        self.stdout)
 
             if not headers['eventname'].startswith('TICK'):
                 # do nothing with non-TICK events
@@ -183,7 +189,7 @@ class HTTPOk:
 
                 try:
                     for will_retry in range(
-                            self.timeout // (self.retry_time or 1) - 1 ,
+                            self.timeout // (self.retry_time or 1) - 1,
                             -1, -1):
                         try:
                             headers = {'User-Agent': 'httpok'}
@@ -207,7 +213,7 @@ class HTTPOk:
                     msg = 'error contacting %s:\n\n %s' % (self.url, e)
 
                 if (self.status and str(status) not in self.status) or \
-                    (self.nstatus and str(status) in self.nstatus):
+                        (self.nstatus and str(status) in self.nstatus):
                     subject = 'httpok for %s: bad status returned' % self.url
                     self.act(subject, msg)
                 elif self.inbody and self.inbody not in body:
@@ -268,7 +274,7 @@ class HTTPOk:
             self.mail(self.email, subject, message)
 
     def mail(self, email, subject, msg):
-        body =  'To: %s\n' % self.email
+        body = 'To: %s\n' % self.email
         body += 'Subject: %s\n' % subject
         body += '\n'
         body += msg
@@ -307,21 +313,21 @@ class HTTPOk:
 
 def main(argv=sys.argv):
     import getopt
-    short_args="hp:at:cC:b:s:m:g:d:eE"
-    long_args=[
-        "help",
-        "program=",
-        "any",
-        "timeout=",
-        "code=",
-        "not-code=",
-        "body=",
-        "sendmail_program=",
-        "email=",
-        "gcore=",
-        "coredir=",
-        "eager",
-        "not-eager",
+    short_args = 'hp:at:cC:b:s:m:g:d:eE'
+    long_args = [
+        'help',
+        'program=',
+        'any',
+        'timeout=',
+        'code=',
+        'not-code=',
+        'body=',
+        'sendmail_program=',
+        'email=',
+        'gcore=',
+        'coredir=',
+        'eager',
+        'not-eager',
         ]
     arguments = argv[1:]
     try:
@@ -369,7 +375,7 @@ def main(argv=sys.argv):
 
         if option in ('-c', '--code'):
             status = value
-            
+
         if option in ('-C', '--not-code'):
             nstatus = value
             status = ''
@@ -401,8 +407,8 @@ def main(argv=sys.argv):
         sys.stderr.flush()
         return
 
-    prog = HTTPOk(rpc, programs, any, url, timeout, status, nstatus, inbody, email,
-                  sendmail, coredir, gcore, eager, retry_time)
+    prog = HTTPOk(rpc, programs, any, url, timeout, status, nstatus, inbody,
+                  email, sendmail, coredir, gcore, eager, retry_time)
     prog.runforever()
 
 if __name__ == '__main__':
